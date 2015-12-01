@@ -1,0 +1,21 @@
+/*
+ * People allowed to send to notify lists
+ *
+ * Access to lists is managed on a per-account basis. One person per 
+ * account is designated as the person allowed to send messages.
+ *
+ * A maximum number of messages may be sent to the list per period,
+ * per account. The sendCount tracks messages sent in this period.
+ */
+CREATE TABLE notifyAccessList
+(
+	accountID	userIdentifier		NOT NULL,
+	userID		userIdentifier		NOT NULL,
+	notifyID	userIdentifier		NOT NULL,
+	locked		bit			NOT NULL,
+	maxMsgs		smallint		NOT NULL,
+	msgInterval	smallint		NOT NULL,
+	msgCount	int			NOT NULL,
+		CONSTRAINT uniqueNotify UNIQUE ( accountID, notifyID )
+)
+GO

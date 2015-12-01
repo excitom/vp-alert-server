@@ -1,0 +1,99 @@
+/*
+ * Subscribe a user to a notify list
+ *
+ * Input: List ID, userID, notification preference
+ *
+ *   Notification preference:
+ *   - community
+ *     1 ->  vpchat
+ *     2 ->  vpadult
+ *   - IM type
+ *     4 ->  chat
+ *     8 ->  buddy
+ *   - offline notify
+ *     16 -> email
+ *     32 -> SMS
+ *
+ * Output: 0 = success
+ *         1 = success, existing subscription updated
+ *         20000 = list not found 
+ *         20001 = list is deleted
+ *         20002 = list is locked
+ *         20003 = user not found 
+ */
+CREATE PROC subscribeNotifyList (
+	@notifyID	userIdentifier,
+	@userID		userIdentifier,
+	@notifyPref	smallint
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+  DECLARE @rc		int
+  DECLARE @locked	bit
+  DECLARE @deleted	bit
+
+  BEGIN TRAN
+    IF NOT EXISTS (SELECT * FROM notifyLists WHERE notifyID = @notifyID)
+    BEGIN
+      ROLLBACK TRAN
+      RETURN 20000
+    END
+
+    SELECT @locked = locked, @deleted = deleted
+    FROM notifyLists
+    WHERE notifyID = @notifyID
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+    IF @locked = 1
+    BEGIN
+      ROLLBACK TRAN
+      RETURN 20002
+    END
+
+    IF @deleted = 1
+    BEGIN
+      ROLLBACK TRAN
+      RETURN 20001
+    END
+
+    IF NOT EXISTS
+      (SELECT * FROM vpusers..users
+         WHERE userID = @userID AND registrationMode = 2)
+    BEGIN
+      ROLLBACK TRAN
+      RETURN 20003
+    END
+
+    IF EXISTS (SELECT * FROM notifySubscrs WHERE userID = @userID AND notifyID = @notifyID)
+    BEGIN
+      UPDATE notifySubscrs
+        SET  notifyPref = @notifyPref
+        WHERE userID = @userID AND notifyID = @notifyID
+
+      SELECT @rc = 1
+    END
+    ELSE BEGIN
+      INSERT notifySubscrs (notifyID, userID, notifyPref)
+        VALUES(@notifyID, @userID, @notifyPref)
+
+      SELECT @rc = 0
+    END
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+  COMMIT TRAN
+  RETURN @rc
+END
+GO

@@ -1,0 +1,41 @@
+/*
+ * Remove an access list entry for a notify list
+ *
+ * Sending messages to a notify list is restricted to users
+ * on the access list.
+ *
+ * Input: List ID, accountID
+ *
+ * Output: 0 = success
+ *         20005 = account entry not found 
+ */
+CREATE PROC delNotifyAccessList ( 
+	@notifyID 	userIdentifier,
+	@accountID 	userIdentifier
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+
+  BEGIN TRAN
+    IF EXISTS (SELECT * FROM notifyAccessList
+                 WHERE notifyID = @notifyID AND accountID = @accountID)
+    BEGIN
+      DELETE notifyAccessList
+        WHERE notifyID = @notifyID AND accountID = @accountID
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+    END
+    ELSE BEGIN
+      ROLLBACK TRAN
+      RETURN 20005
+    END
+
+  COMMIT TRAN
+END
+GO

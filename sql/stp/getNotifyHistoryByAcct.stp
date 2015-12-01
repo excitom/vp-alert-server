@@ -1,0 +1,101 @@
+/*
+ * Get hostory of message notify events, by account.
+ */
+CREATE PROC getNotifyHistoryByAcct( @accountID userIdentifier, @direction bit = 1, @sortBy char = 'D' )
+AS
+BEGIN
+  DECLARE @lastError	int
+
+  IF @direction = 1
+  BEGIN
+    IF @sortBy = 'D'
+    BEGIN
+      SELECT notifyHistory.eventID, description, nickName, sent, notifyHistory.type, notifyHistory.message, onlineCtr, emailCtr, smsCtr, subscrCtr
+        FROM notifyHistory, notifyLists, vpusers..users
+        WHERE notifyHistory.accountID = @accountID
+        AND notifyHistory.notifyID = notifyLists.notifyID
+        AND notifyHistory.userID = vpusers..users.userID
+        AND status = 0
+        ORDER BY sent ASC, nickName ASC
+    END
+    IF @sortBy = 'E'
+    BEGIN
+      SELECT notifyHistory.eventID, description, nickName, sent, notifyHistory.type, notifyHistory.message, onlineCtr, emailCtr, smsCtr, subscrCtr
+        FROM notifyHistory, notifyLists, vpusers..users
+        WHERE notifyHistory.accountID = @accountID
+        AND notifyHistory.notifyID = notifyLists.notifyID
+        AND notifyHistory.userID = vpusers..users.userID
+        AND status = 0
+        ORDER BY description ASC, sent ASC
+    END
+    IF @sortBy = 'S'
+    BEGIN
+      SELECT notifyHistory.eventID, description, nickName, sent, notifyHistory.type, notifyHistory.message, onlineCtr, emailCtr, smsCtr, subscrCtr
+        FROM notifyHistory, notifyLists, vpusers..users
+        WHERE notifyHistory.accountID = @accountID
+        AND notifyHistory.notifyID = notifyLists.notifyID
+        AND notifyHistory.userID = vpusers..users.userID
+        AND status = 0
+        ORDER BY nickName ASC, sent ASC
+    END
+    IF @sortBy = 'T'
+    BEGIN
+      SELECT notifyHistory.eventID, description, nickName, sent, notifyHistory.type, notifyHistory.message, onlineCtr, emailCtr, smsCtr, subscrCtr
+        FROM notifyHistory, notifyLists, vpusers..users
+        WHERE notifyHistory.accountID = @accountID
+        AND notifyHistory.notifyID = notifyLists.notifyID
+        AND notifyHistory.userID = vpusers..users.userID
+        AND status = 0
+        ORDER BY type ASC, sent ASC
+    END
+  END
+  ELSE BEGIN
+    IF @sortBy = 'D'
+    BEGIN
+      SELECT notifyHistory.eventID, description, nickName, sent, notifyHistory.type, notifyHistory.message, onlineCtr, emailCtr, smsCtr, subscrCtr
+        FROM notifyHistory, notifyLists, vpusers..users
+        WHERE notifyHistory.accountID = @accountID
+        AND notifyHistory.notifyID = notifyLists.notifyID
+        AND notifyHistory.userID = vpusers..users.userID
+        AND status = 0
+        ORDER BY sent DESC, description ASC
+    END
+    IF @sortBy = 'E'
+    BEGIN
+      SELECT notifyHistory.eventID, description, nickName, sent, notifyHistory.type, notifyHistory.message, onlineCtr, emailCtr, smsCtr, subscrCtr
+        FROM notifyHistory, notifyLists, vpusers..users
+        WHERE notifyHistory.accountID = @accountID
+        AND notifyHistory.notifyID = notifyLists.notifyID
+        AND notifyHistory.userID = vpusers..users.userID
+        AND status = 0
+        ORDER BY description DESC, sent ASC
+    END
+    IF @sortBy = 'S'
+    BEGIN
+      SELECT notifyHistory.eventID, description, nickName, sent, notifyHistory.type, notifyHistory.message, onlineCtr, emailCtr, smsCtr, subscrCtr
+        FROM notifyHistory, notifyLists, vpusers..users
+        WHERE notifyHistory.accountID = @accountID
+        AND notifyHistory.notifyID = notifyLists.notifyID
+        AND notifyHistory.userID = vpusers..users.userID
+        AND status = 0
+        ORDER BY nickName DESC, sent ASC
+    END
+    IF @sortBy = 'T'
+    BEGIN
+      SELECT notifyHistory.eventID, description, nickName, sent, notifyHistory.type, notifyHistory.message, onlineCtr, emailCtr, smsCtr, subscrCtr
+        FROM notifyHistory, notifyLists, vpusers..users
+        WHERE notifyHistory.accountID = @accountID
+        AND notifyHistory.notifyID = notifyLists.notifyID
+        AND notifyHistory.userID = vpusers..users.userID
+        AND status = 0
+        ORDER BY type DESC, sent ASC
+    END
+  END
+    
+  SELECT @lastError = @@error
+  IF @lastError != 0
+  BEGIN
+    RETURN @lastError
+  END
+END
+GO

@@ -1,0 +1,21 @@
+/*
+ * Notify lists
+ *
+ * For the purpose of keeping history lists are never removed from
+ * the system, but they can be marked deleted.
+ *
+ * Lists can also be temporarily locked, and events will not be sent
+ * during this time.
+ */
+CREATE TABLE notifyLists
+(
+	notifyID	userIdentifier		 IDENTITY
+                        	CONSTRAINT isPrimary PRIMARY KEY,
+	description	longName		NOT NULL
+				CONSTRAINT uniqueDescr UNIQUE,
+	subheader	longName		NULL,
+	type		tinyint			NOT NULL,
+	locked		bit			NOT NULL,
+	deleted		bit			NOT NULL
+)
+GO

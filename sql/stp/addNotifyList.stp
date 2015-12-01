@@ -1,0 +1,86 @@
+/*
+ * Add a new notify list
+ *
+ * Lists are unique by description. For history-keeping purposes, a
+ * list is never destroyed. It can be marked deleted, but it remains
+ * in the system. A deleted list can be reactivated by adding it again.
+ *
+ * Input: List name (description), optional type and subheader
+ *
+ *   Type: lower 2 bits indicate a broadcast list
+ *           0x01 - family broadcast
+ *           0x02 - adult broadcast
+ *           0x04 - broadcast to chatters
+ *           0x08 - broadcast to buddies
+ *           0x10 - adult event (non-broadcast)
+ *           0x20 - internal event
+ *
+ * Output: 0 = success
+ *         1 = success, list had been deleted
+ *         20000 = duplicate name
+ */
+CREATE PROC addNotifyList ( 
+	@description	longName,
+	@type		tinyint = 0,
+	@subheader	longName = NULL
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+  DECLARE @rc		int
+  DECLARE @notifyID	userIdentifier
+  DECLARE @deleted	bit
+
+  BEGIN TRAN
+    SELECT @description = ltrim(@description)
+
+    SELECT @notifyID = notifyID, @deleted = deleted
+      FROM notifyLists
+      WHERE description = @description
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+    IF @notifyID IS NOT NULL
+    BEGIN
+      IF @deleted = 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN 20000
+      END
+
+      UPDATE notifyLists
+        SET deleted = 0, locked = 0, type = @type, subheader = @subheader
+        WHERE notifyID = @notifyID
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+            
+      SELECT @rc = 1
+    END
+    ELSE BEGIN
+      INSERT notifyLists ( description, locked, deleted, type, subheader )
+        VALUES (@description, 0, 0, @type, @subheader)
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+
+      SELECT @rc = 0
+    END
+
+  COMMIT TRAN
+  RETURN @rc
+END
+GO

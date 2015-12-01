@@ -1,0 +1,47 @@
+/*
+ * Return a list of the notify lists
+ *
+ */
+CREATE PROC getNotifyLists (
+	@showDeleted	bit=0,
+	@showCtrs	bit=0
+)
+AS
+BEGIN
+  IF @showDeleted = 1
+    IF @showCtrs = 1
+    BEGIN
+      SELECT n.notifyID, type, n.locked, description, subheader,
+       (SELECT COUNT(s.userID)
+         FROM notifySubscrs s
+         WHERE s.notifyID = n.notifyID),
+       (SELECT COUNT(a.userID)
+         FROM notifyAccessList a
+         WHERE a.notifyID = n.notifyID)
+       FROM notifyLists n
+       ORDER BY description ASC
+    END
+    ELSE BEGIN
+      SELECT notifyID, type, locked, description, subheader FROM notifyLists 
+        ORDER BY description ASC
+    END
+  ELSE
+    IF @showCtrs = 1
+    BEGIN
+      SELECT n.notifyID, type, n.locked, description, subheader,
+       (SELECT COUNT(s.userID)
+         FROM notifySubscrs s
+         WHERE s.notifyID = n.notifyID),
+       (SELECT COUNT(a.userID)
+         FROM notifyAccessList a
+         WHERE a.notifyID = n.notifyID)
+       FROM notifyLists n
+       WHERE deleted = 0
+       ORDER BY description ASC
+    END
+    ELSE BEGIN
+      SELECT notifyID, type, locked, description, subheader FROM notifyLists WHERE deleted = 0
+        ORDER BY description ASC
+    END
+END
+GO

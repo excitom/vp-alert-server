@@ -1,0 +1,43 @@
+/*
+ * Update statistics for an event
+ *
+ * Input: event ID, various counters
+ *
+ */
+CREATE PROC updateNotifyEventStats (
+	@eventID	userIdentifier,
+	@onlineCtr	int,
+	@emailCtr	int,
+	@smsCtr		int,
+	@subscrCtr	int
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+
+  BEGIN TRAN
+    IF EXISTS 
+      (SELECT * FROM notifyHistory WHERE eventID = @eventID)
+    BEGIN
+      UPDATE notifyHistory
+        SET onlineCtr = @onlineCtr,
+            emailCtr  = @emailCtr,
+            smsCtr    = @smsCtr,
+            subscrCtr = @subscrCtr
+        WHERE eventID = @eventID
+    END
+    ELSE BEGIN
+      ROLLBACK TRAN
+      RETURN 20000
+    END
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+  COMMIT TRAN
+END
+GO

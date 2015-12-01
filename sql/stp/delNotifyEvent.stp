@@ -1,0 +1,97 @@
+/*
+ * Delete a message event for a notify list. This allows for
+ * rescinding messages scheduled in the future, but is unlikely
+ * to catch messages sent for immediate delivery.
+ *
+ * Input: list ID, sender's ID, sender's account ID, message, time
+ *
+ * The time is assumed to be GMT.
+ *
+ * Output: 0 = success
+ *         20000 = no such message
+ */
+CREATE PROC delNotifyEvent (
+	@eventID	userIdentifier
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+  DECLARE @diffFromGMT	int
+  DECLARE @userID	userIdentifier
+  DECLARE @accountID	userIdentifier
+  DECLARE @notifyID	userIdentifier
+  DECLARE @scheduled	VpTime
+  DECLARE @now		VpTime
+  DECLARE @message	longName
+  DECLARE @description	longName
+  DECLARE @status	tinyint
+  DECLARE @type	tinyint
+
+  BEGIN TRAN
+    SELECT @diffFromGMT = gmt
+      FROM vpusers..getGMT
+    IF @diffFromGMT IS NULL
+      SELECT @diffFromGMT = 0
+    
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+    SELECT @now = dateadd( hour, (-1) * @diffFromGMT, getdate() )
+
+    SELECT  @userID = userID,
+            @accountID = accountID,
+            @notifyID = notifyID,
+            @scheduled = time,
+            @message = message
+      FROM  notifyEvents
+      WHERE eventID = @eventID
+    
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+    IF @userID IS NOT NULL
+    BEGIN
+
+      SELECT @description = description,
+             @type = type
+        FROM notifyLists
+        WHERE notifyID = @notifyID
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+
+      SELECT @status = 1
+      INSERT notifyHistory
+        (eventID, notifyID, userID, accountID, scheduled, sent, type, status, onlineCtr, emailCtr, smsCtr, subscrCtr, message)
+        VALUES(@eventID, @notifyID, @userID, @accountID, @scheduled, @now, @type, @status, 0, 0, 0, 0, @message)
+
+      DELETE notifyEvents
+        WHERE eventID = @eventID
+    
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+    END
+    ELSE BEGIN
+      ROLLBACK TRAN
+      RETURN 20000
+    END
+    
+  COMMIT TRAN
+END
+GO

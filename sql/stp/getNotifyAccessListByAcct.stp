@@ -1,0 +1,28 @@
+/*
+ * Get an access list entry for a notify list for a specific account
+ *
+ */
+CREATE PROC getNotifyAccessListByAcct (
+	@notifyID	userIdentifier,
+	@accountID	userIdentifier
+)
+AS
+BEGIN
+  IF @notifyID = 0
+  BEGIN
+    SELECT userID, notifyAccessList.notifyID, notifyAccessList.locked, maxMsgs, msgInterval, msgCount, description
+      FROM notifyAccessList, notifyLists
+      WHERE accountID = @accountID
+      AND notifyAccessList.notifyID = notifyLists.notifyID
+      AND notifyLists.deleted = 0
+  END
+  ELSE BEGIN
+    SELECT userID, accountID, notifyAccessList.locked, maxMsgs, msgInterval, msgCount
+      FROM notifyAccessList, notifyLists
+      WHERE notifyAccessList.notifyID  = @notifyID
+      AND   accountID = @accountID
+      AND   notifyAccessList.notifyID = notifyLists.notifyID
+      AND   notifyLists.deleted = 0
+  END
+END
+GO

@@ -1,0 +1,70 @@
+/*
+ * Add/update notify list preferences for a user.
+ *
+ * Input: userID, active/inacive flag, email, sms
+ *
+ * Output: 0 = success
+ *         1 = successful update
+ *
+ */
+CREATE PROC updateNotifyPrefs (
+	@userID		userIdentifier,
+	@active		bit,
+	@email		longName = NULL,
+	@sms		longName = NULL
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+  DECLARE @rc		int
+  DECLARE @uid		userIdentifier
+  DECLARE @oldEmail	longName
+  DECLARE @oldSms	longName
+
+  BEGIN TRAN
+    SELECT @uid      = userID,
+           @oldEmail = email,
+           @oldSms   = sms
+       FROM notifyPrefs
+       WHERE userID = @userID
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+    IF @uid = @userID
+    BEGIN
+      -- IF @email IS NULL
+        -- SELECT @email = @oldEmail
+      -- IF @sms IS NULL
+        -- SELECT @sms = @oldSms
+      
+      UPDATE notifyPrefs
+        SET active = @active,
+            email  = @email,
+            sms    = @sms
+        WHERE userID = @userID
+
+      SELECT @rc = 1
+    END
+    ELSE BEGIN
+      INSERT notifyPrefs (userID, active, email, sms)
+        VALUES (@userID, @active, @email, @sms)
+
+      SELECT @rc = 0
+    END
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+  COMMIT TRAN
+  RETURN @rc
+END
+GO

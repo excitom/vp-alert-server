@@ -1,0 +1,21 @@
+/*
+ * Get list of pending message notify events.
+ */
+CREATE PROC getNotifyEvents
+AS
+BEGIN
+  DECLARE @lastError	int
+
+  SELECT eventID, notifyEvents.notifyID, description, notifyEvents.userID, nickName, accountID, time, message
+    FROM notifyEvents, notifyLists, vpusers..users
+    WHERE notifyEvents.notifyID = notifyLists.notifyID
+    AND notifyEvents.userID = vpusers..users.userID
+    ORDER BY description ASC
+    
+  SELECT @lastError = @@error
+  IF @lastError != 0
+  BEGIN
+    RETURN @lastError
+  END
+END
+GO

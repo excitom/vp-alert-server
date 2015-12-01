@@ -1,0 +1,16 @@
+/*
+ * Subscribers to notify lists
+ */
+CREATE TABLE notifySubscrs
+(
+	userID		userIdentifier		NOT NULL,
+	notifyID	userIdentifier		NOT NULL,
+	notifyPref	tinyint			NOT NULL,
+	-- 1 -> send IM if online in primary community
+	-- 2 -> send IM if online in secondary community
+	-- 4 -> prefer IM to buddy list vs. chat
+	-- 8 -> send email if offline
+	-- 16 -> send sms if offline
+		CONSTRAINT uniqueNotify UNIQUE ( userID, notifyID )
+)
+GO

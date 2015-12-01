@@ -1,0 +1,51 @@
+/*
+ * Unsubscribe a user from a notify list
+ *
+ * Input: List ID, userID
+ *
+ * Output: 0 = success
+ *         20000 = list not found 
+ *         20003 = user not found 
+ */
+CREATE PROC unsubscribeNotifyList (
+	@notifyID	userIdentifier,
+	@userID		userIdentifier
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+  DECLARE @locked	bit
+  DECLARE @deleted	bit
+
+  BEGIN TRAN
+    IF NOT EXISTS (SELECT * FROM notifyLists WHERE notifyID = @notifyID)
+    BEGIN
+      ROLLBACK TRAN
+      RETURN 20000
+    END
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+    IF NOT EXISTS (SELECT * FROM notifySubscrs WHERE userID = @userID AND notifyID = @notifyID)
+    BEGIN
+      ROLLBACK TRAN
+      RETURN 20003
+    END
+
+    DELETE notifySubscrs WHERE userID = @userID AND notifyID = @notifyID
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+  COMMIT TRAN
+END
+GO

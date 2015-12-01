@@ -1,0 +1,49 @@
+/*
+ * Delete a notify list stuff for an individual user
+ *
+ * Input: user name
+ *
+ * Output: 0 = success
+ *         20000 = ID not found
+ */
+CREATE PROC delNotifyByUser ( 
+	@nickName	VPuserID
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+  DECLARE @userID	userIdentifier
+
+  BEGIN TRAN
+    SELECT @userID = userID
+      FROM vpusers..users
+      WHERE nickName = @nickName
+      AND registrationMode = 2
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+    IF @userID IS NULL
+    BEGIN
+      ROLLBACK TRAN
+      RETURN 20000
+    END
+
+    DELETE notifyAccessList WHERE userID = @userID
+    DELETE notifySubscrs    WHERE userID = @userID
+    DELETE notifyPrefs      WHERE userID = @userID
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+  COMMIT TRAN
+END
+GO

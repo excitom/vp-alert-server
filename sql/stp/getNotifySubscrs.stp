@@ -1,0 +1,41 @@
+/*
+ * Get subscribers to a notify list.
+ *
+ * Input: notifyID
+ *
+ * Output: 0 = success
+ *         20000 = list not found
+ *
+ */
+CREATE PROC getNotifySubscrs (
+	@notifyID	userIdentifier
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+
+  BEGIN TRAN
+    IF EXISTS (SELECT * FROM notifyLists WHERE notifyID = @notifyID)
+    BEGIN
+      SELECT notifySubscrs.userID, nickName, notifyPref
+        FROM notifySubscrs, vpusers..users
+        WHERE notifyID = @notifyID
+        AND notifySubscrs.userID=vpusers..users.userID
+        AND registrationMode = 2
+        AND locked = 0
+        ORDER BY nickName ASC
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+    END
+    ELSE BEGIN
+      ROLLBACK TRAN
+      RETURN 20000
+    END
+  COMMIT
+END
+GO

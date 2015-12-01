@@ -1,0 +1,110 @@
+/*
+ * Update an access list entry for a notify list
+ *
+ * Input: List ID, accountID, message count (per interval), lock flag
+ *
+ *   The list ID and accountID are used to find an access list entry.
+ *   The message counts and lock flag are the variables that
+ *   may be changed. 
+ *
+ * Output: 0 = success
+ *         20000 = list not found
+ *         20001 = deleted list
+ *         20003 = account entry not found for this list
+ */
+CREATE PROC updateNotifyAccessList ( 
+	@notifyID 	userIdentifier,
+	@accountID 	userIdentifier,
+	@lock		int,
+	@maxMsgs	smallint,
+	@msgInterval	smallint
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+  DECLARE @deleted	bit
+  DECLARE @curLock	bit
+  DECLARE @curInterval	smallint
+  DECLARE @curMaxMsgs	smallint
+
+  BEGIN TRAN
+    IF EXISTS (SELECT * FROM notifyLists WHERE notifyID = @notifyID)
+    BEGIN
+      SELECT @deleted = deleted
+      FROM notifyLists
+      WHERE notifyID = @notifyID
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+
+      IF @deleted = 1
+      BEGIN
+        ROLLBACK TRAN
+        RETURN 20001
+      END
+
+      SELECT @curInterval = msgInterval,
+             @curMaxMsgs = maxMsgs,
+             @curLock = locked
+        FROM notifyAccessList
+        WHERE accountID = @accountID
+        AND   notifyID  = @notifyID
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+
+      IF @curInterval IS NULL
+      BEGIN
+        ROLLBACK TRAN
+        RETURN 20003
+      END
+
+      IF @msgInterval = -1
+      BEGIN
+        SELECT @msgInterval = @curInterval
+      END
+
+      IF @maxMsgs = -1
+      BEGIN
+        SELECT @maxMsgs = @curMaxMsgs
+      END
+
+      IF @lock = -1
+      BEGIN
+        SELECT @lock = @curLock
+      END
+      IF @lock > 1
+        SELECT @lock = 1
+      IF @lock < 0
+        SELECT @lock = 0
+
+      UPDATE notifyAccessList 
+        SET  locked  = @lock,
+             maxMsgs = @maxMsgs,
+             msgInterval = @msgInterval
+        WHERE notifyID = @notifyID
+        AND   accountID = @accountID
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+    END
+    ELSE BEGIN
+      ROLLBACK TRAN
+      RETURN 20000
+    END
+
+  COMMIT TRAN
+END
+GO

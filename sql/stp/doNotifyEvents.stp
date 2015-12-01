@@ -1,0 +1,122 @@
+/*
+ * Find pending message notify events due for processing.
+ * - Return list of these events
+ * - Delete them from the pending list
+ * - Update the event history
+ */
+CREATE PROC doNotifyEvents
+AS
+BEGIN
+  DECLARE @lastError	int
+  DECLARE @diffFromGMT 	int
+  DECLARE @description 	longName
+  DECLARE @message 	longName
+  DECLARE @nickName 	longName
+  DECLARE @eventID 	userIdentifier
+  DECLARE @userID 	userIdentifier
+  DECLARE @notifyID 	userIdentifier
+  DECLARE @accountID 	userIdentifier
+  DECLARE @scheduled   	VpTime
+  DECLARE @now    	VpTime
+  DECLARE @type    	tinyint
+  DECLARE @status    	tinyint
+
+  BEGIN TRAN
+    SELECT @diffFromGMT = gmt
+      FROM vpusers..getGMT
+    IF @diffFromGMT IS NULL
+      SELECT @diffFromGMT = 0
+    
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+    SELECT @now = dateadd( hour, (-1) * @diffFromGMT, getdate() )
+
+    DECLARE evCursor CURSOR
+    FOR 
+    SELECT  eventID,
+            userID,
+            accountID,
+            notifyID,
+            time,
+            message
+      FROM  notifyEvents
+      WHERE time <= @now
+    FOR UPDATE
+
+    OPEN evCursor
+    FETCH evCursor INTO @eventID, @userID, @accountID, @notifyID, 
+                        @scheduled, @message
+    WHILE ( @@sqlstatus = 0 ) 
+    BEGIN
+
+      SELECT @description = description,
+             @type = type
+        FROM notifyLists
+        WHERE notifyID = @notifyID
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+ 
+      SELECT @nickName = nickName
+        FROM vpusers..users
+        WHERE userID = @userID
+        AND registrationMode = 2
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+
+      DELETE notifyEvents WHERE eventID = @eventID
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+
+      SELECT @status = 0
+      INSERT notifyHistory
+        (eventID, notifyID, userID, accountID, scheduled, sent, type, status, onlineCtr, emailCtr, smsCtr, subscrCtr, message)
+        VALUES(@eventID, @notifyID, @userID, @accountID, @scheduled, @now, @type, @status, 0, 0, 0, 0, @message)
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+
+      UPDATE notifyAccessList
+        SET   msgCount  = msgCount + 1
+        WHERE notifyID  = @notifyID
+        AND   accountID = @accountID
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+
+      SELECT @eventID, @notifyID, @description, @nickName, @message, @type
+
+      FETCH evCursor INTO @eventID, @userID, @accountID, @notifyID, 
+                          @scheduled, @message
+    END
+    CLOSE evCursor
+
+  COMMIT TRAN
+END
+GO

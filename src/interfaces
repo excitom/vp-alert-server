@@ -1,0 +1,9 @@
+
+## SYBASE on robin
+## 	 Services:
+##		query	tcp	(2026)
+##		master	tcp	(2026)
+
+SYBASE 5 5
+	query tli tcp /dev/tcp \x000207eac0bc10040000000000000000
+	master tli tcp /dev/tcp \x000207eac0bc10040000000000000000

@@ -1,0 +1,63 @@
+/*
+ * Set/clear the lock flag for a notify list
+ *
+ * Input: List ID, lock flag
+ *  If the lock flag is elided, then toggle the current value.
+ *
+ * Output: 0 = success
+ *         20000 = ID not found
+ */
+CREATE PROC setNotifyListLock ( 
+	@notifyID	userIdentifier,
+	@locked		int = NULL
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+  DECLARE @curLock	bit
+  DECLARE @nid		userIdentifier
+
+  BEGIN TRAN
+
+    SELECT @nid = notifyID, @curLock = locked
+      FROM notifyLists
+      WHERE notifyID = @notifyID
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+    IF @nid = @notifyID
+    BEGIN
+      
+      IF @locked IS NULL
+        SELECT @locked = 1 - @curLock
+      ELSE BEGIN
+        IF @locked > 1
+          SELECT @locked = 1
+        IF @locked < 0
+          SELECT @locked = 0
+      END
+      
+      UPDATE notifyLists 
+        SET locked = @locked
+        WHERE notifyID = @notifyID
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+    END
+    ELSE BEGIN
+      ROLLBACK TRAN
+      RETURN 20000
+    END
+
+  COMMIT TRAN
+END
+GO

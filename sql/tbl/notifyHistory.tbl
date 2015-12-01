@@ -1,0 +1,21 @@
+/*
+ * History of notify list usage
+ */
+CREATE TABLE notifyHistory
+(
+	eventID		userIdentifier		NOT NULL
+                        	CONSTRAINT isPrimary PRIMARY KEY,
+	userID		userIdentifier		NOT NULL,
+	accountID	userIdentifier		NOT NULL,
+	notifyID	userIdentifier		NOT NULL,
+	scheduled	VpTime			NOT NULL,
+	sent		VpTime			NOT NULL,
+	type		tinyint			NOT NULL,
+	status		tinyint			NOT NULL,
+	onlineCtr	int			NOT NULL,
+	emailCtr	int			NOT NULL,
+	smsCtr		int			NOT NULL,
+	subscrCtr	int			NOT NULL,
+	message		longName		NULL
+)
+GO

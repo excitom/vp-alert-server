@@ -1,0 +1,51 @@
+/*
+ * Get offline notification preferences for a user.
+ *
+ * Input: userID
+ *
+ * Output: 0 = success
+ *         20000 = user prefs not found
+ *
+ */
+CREATE PROC getNotifyPrefs (
+	@userID		userIdentifier
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+  DECLARE @rc	int
+
+  BEGIN TRAN
+    IF EXISTS (SELECT * FROM notifyPrefs WHERE userID = @userID)
+    BEGIN
+      SELECT nickName, active, email, sms
+        FROM notifyPrefs, vpusers..users
+        WHERE notifyPrefs.userID = @userID
+        AND notifyPrefs.userID = vpusers..users.userID
+        AND registrationMode = 2
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+      SELECT @rc = 0
+    END
+    ELSE BEGIN
+      SELECT nickName, 0, NULL, NULL
+        FROM vpusers..users
+        WHERE userID = @userID
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+      SELECT @rc = 20000
+    END
+  COMMIT TRAN
+  RETURN @rc
+END
+GO

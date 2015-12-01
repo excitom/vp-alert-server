@@ -1,0 +1,43 @@
+/*
+ * Delete a notify list
+ *
+ * Lists are unique by description. For history-keeping purposes, a
+ * list is never destroyed. It can be marked deleted, but it remains
+ * in the system. A deleted list can be reactivated by adding it again.
+ *
+ * Input: List ID
+ *
+ * Output: 0 = success
+ *         20000 = ID not found
+ */
+CREATE PROC delNotifyList ( 
+	@notifyID	userIdentifier
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+  DECLARE @deleted	bit
+
+  BEGIN TRAN
+
+    IF EXISTS (SELECT * FROM notifyLists WHERE notifyID = @notifyID)
+    BEGIN
+      UPDATE notifyLists 
+        SET deleted = 1, locked = 1
+        WHERE notifyID = @notifyID
+
+      SELECT @lastError = @@error
+      IF @lastError != 0
+      BEGIN
+        ROLLBACK TRAN
+        RETURN @lastError
+      END
+    END
+    ELSE BEGIN
+      ROLLBACK TRAN
+      RETURN 20000
+    END
+
+  COMMIT TRAN
+END
+GO

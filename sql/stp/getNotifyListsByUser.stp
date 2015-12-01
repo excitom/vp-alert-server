@@ -1,0 +1,21 @@
+/*
+ * Return a list of the notify lists to which a user is subscribed
+ *
+ */
+CREATE PROC getNotifyListsByUser (
+	@nickName	VPuserID
+)
+AS
+BEGIN
+  SELECT @nickName = lower(@nickName)
+  SELECT @nickName = ltrim(@nickName)
+
+  SELECT notifyLists.notifyID, description, subheader
+    FROM notifyLists, notifySubscrs, vpusers..users
+    WHERE nickName = @nickName
+    AND   registrationMode = 2
+    AND   vpusers..users.userID = notifySubscrs.userID
+    AND   notifySubscrs.notifyID = notifyLists.notifyID
+    ORDER BY description ASC
+END
+GO

@@ -1,0 +1,20 @@
+/*
+ * Pending notify list events
+ *
+ * The vpnotify service will periodically query this table for 
+ * events to process. Typically, the time will be set to "now" 
+ * when a new event is added, so that it will be sent immediately.
+ * By setting a time in the future, it is possible to schedule
+ * pending events.
+ */
+CREATE TABLE notifyEvents
+(
+	eventID		userIdentifier		 IDENTITY
+                        	CONSTRAINT isPrimary PRIMARY KEY,
+	userID		userIdentifier		NOT NULL,
+	accountID	userIdentifier		NOT NULL,
+	notifyID	userIdentifier		NOT NULL,
+	time		VpTime			NOT NULL,
+	message		longName		NULL
+)
+GO

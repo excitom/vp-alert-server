@@ -1,0 +1,129 @@
+/*
+ * Add a message event to a notify list. The message will be propagated
+ * to the subscribers at the scheduled time of the event.
+ *
+ * Input: list ID, sender's ID, sender's account ID, message, time to send
+ *
+ * Output: 0 = success
+ *         20000 = no such list
+ *         20001 = unauthorized user
+ *         20002 = list locked
+ *         20003 = message limit exceeded
+ */
+CREATE PROC addNotifyEventByTime (
+	@notifyID	userIdentifier,
+	@userID		userIdentifier,
+	@accountID	userIdentifier,
+	@message	longName,
+	@time		VpTime,
+	@clientTZ	int = 0
+)
+AS
+BEGIN
+  DECLARE @lastError	int
+  DECLARE @locked	bit
+  DECLARE @nid		userIdentifier
+  DECLARE @uid		userIdentifier
+  DECLARE @msgCount	int
+  DECLARE @maxMsgs	smallint
+  DECLARE @msgInterval	smallint
+  DECLARE @diffFromGMT 	int
+  DECLARE @now    	VpTime
+  DECLARE @then    	VpTime
+
+  BEGIN TRAN
+
+    SELECT @locked = locked, @nid = notifyID
+      FROM notifyLists
+      WHERE notifyID = @notifyID
+      AND   deleted  = 0
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+    IF @nid != @notifyID
+    BEGIN
+      ROLLBACK TRAN
+      RETURN 20000
+    END
+
+    IF @locked = 1
+    BEGIN
+      ROLLBACK TRAN
+      RETURN 20002
+    END
+
+   SELECT @uid         = userID,
+          @maxMsgs     = maxMsgs,
+          @msgInterval = msgInterval,
+          @locked      = locked
+     FROM notifyAccessList
+     WHERE userID    = @userID
+     AND   accountID = @accountID
+     AND   notifyID  = @notifyID
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+
+    IF @uid != @userID
+    BEGIN
+      ROLLBACK TRAN
+      RETURN 20001
+    END
+
+    /*
+     * The lock flag for an individual user means "unauthoried"
+     * versus the lock flag for the list itself.
+     */
+    IF @locked = 1
+    BEGIN
+      ROLLBACK TRAN
+      RETURN 20001
+    END
+
+    /*
+     * Check message sending limits
+     */
+    SELECT @time = dateadd( hour, (-1) * @clientTZ, @time )
+    SELECT @then = dateadd( minute, (-1) * @msgInterval, @time )
+    SELECT  @msgCount = COUNT(*) FROM notifyHistory
+      WHERE accountID = @accountID
+      AND   notifyID  = @notifyID
+      AND   status    = 0
+      AND   sent >= @then
+    SELECT  @msgCount = @msgCount + COUNT(*) FROM notifyEvents
+      WHERE accountID = @accountID
+      AND   notifyID  = @notifyID
+      AND   time >= @then
+
+    IF @msgCount >= @maxMsgs
+    BEGIN
+      ROLLBACK TRAN
+      RETURN 20003
+    END
+
+    /*
+     * If we make it to here, it's OK to queue the message.
+     */
+
+    INSERT notifyEvents (notifyID, userID, accountID, time, message)
+      VALUES (@notifyID, @userID, @accountID, @time, @message)
+
+    SELECT @lastError = @@error
+    IF @lastError != 0
+    BEGIN
+      ROLLBACK TRAN
+      RETURN @lastError
+    END
+    
+  COMMIT TRAN
+END
+GO

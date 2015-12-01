@@ -1,0 +1,12 @@
+/*
+ * Notify list preferences for a user
+ */
+CREATE TABLE notifyPrefs
+(
+	userID		userIdentifier		NOT NULL
+                        	CONSTRAINT isPrimary PRIMARY KEY,
+	active		bit			NOT NULL,
+	sms		longName		NULL,
+	email		longName		NULL
+)
+GO
